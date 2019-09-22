@@ -1,10 +1,14 @@
 import React, { Fragment, useState } from "react";
+import Message from "./Message";
+import Progress from "./Proress";
 import axios from "axios";
 
 const FileUpload = () => {
   const [file, setFile] = useState("");
   const [filename, setFilename] = useState("Choose File");
   const [uploadedFile, setUploadedFile] = useState({});
+  const [message, setMessage] = useState(0);
+  const [uploadPercentage, setUploadPercentege] = useState(0);
 
   const onChange = e => {
     setFile(e.target.files[0]);
@@ -20,21 +24,35 @@ const FileUpload = () => {
       const res = await axios.post("/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data"
+        },
+        onUploadProgress: progressEvent => {
+          setUploadPercentege(
+            parseInt(
+              Math.round((progressEvent.loaded * 100) / progressEvent.total)
+            )
+          );
+          // Clear percentage
+          setTimeout(() => setUploadPercentege(0), 10000);
         }
       });
+
       const { fileName, filePath } = res.data;
+
       setUploadedFile({ fileName, filePath });
+
+      setMessage("File Uploaded");
     } catch (err) {
       if (err.response.status === 500) {
-        console.log("There was a problem with the server");
+        setMessage("There was a problem with the server");
       } else {
-        console.log(err.response.data.msg);
+        setMessage(err.response.data.msg);
       }
     }
   };
 
   return (
     <Fragment>
+      {message ? <Message msg={message} /> : null}
       <form onSubmit={onSubmit}>
         <div className="custom-file mb-4">
           <input
@@ -47,12 +65,23 @@ const FileUpload = () => {
             {filename}
           </label>
         </div>
+        <Progress percentage={uploadPercentage} />
+
         <input
           type="submit"
           value="Upload"
           className="btn btn-primary btn-block mt-4"
         />
       </form>
+
+      {uploadedFile ? (
+        <div className="row mt-5">
+          <div className="col-md-6 m-auto">
+            <h3 className="text-center">{uploadedFile.fileName}</h3>
+            <img style={{ width: "90%" }} src={uploadedFile.filePath} alt="" />
+          </div>
+        </div>
+      ) : null}
     </Fragment>
   );
 };
